@@ -30,6 +30,7 @@ def save_game(game_id):
 @app.get("/")
 def index():
     return app.send_static_file("index.html")
-
+    
 if __name__ == "__main__":
-    app.run("0.0.0.0", 3000, debug=True)
+    port = int(os.environ.get("PORT", 3000))
+    app.run(host="0.0.0.0", port=port)
