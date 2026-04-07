@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Шашки: Альфа и Омега (онлайн)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #fdf6f0, #f8e9f8);
+      padding: 16px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      color: #8b5a76;
+      font-size: 20px;
+      margin-top: 8px;
+      margin-bottom: 6px;
+    }
+
+    p {
+      color: #777;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    #role-select {
+      margin: 16px 0;
+      text-align: center;
+    }
+
+    .role-btn {
+      display: inline-block;
+      margin: 0 8px;
+      padding: 10px 16px;
+      border: 2px solid #d4b1c9;
+      border-radius: 8px;
+      background: #f9c2d9;
+      color: #553344;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #status {
+      margin: 8px 0;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: #fefdf5;
+      color: #663355;
+      font-size: 14px;
+    }
+
+    #game-container {
+      display: none;
+      width: 100%;
+      max-width: 340px;
+      margin-top: 16px;
+    }
+
+    #board {
+      width: 100%;
+      aspect-ratio: 1/1;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      border: 2px solid #d4b1c9;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(190, 140, 190, 0.3);
+      touch-action: manipulation;
+    }
+
+    .cell {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .dark {
+      background: #f5e3f5;
+    }
+
+    .light {
+      background: #fefdf5;
+    }
+
+    .piece {
+      width: 90%;
+      height: 90%;
+      border-radius: 50%;
+      border: 2px solid #9e76b0;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(150, 100, 200, 0.3);
+    }
+
+    .alpha-piece {
+      background: #f9c2d9; /* розовый */
+    }
+
+    .omega-piece {
+      background: #c3b4e6; /* фиолетовый */
+    }
+    .king {
+      box-shadow: 0 0 0 3px gold inset, 0 0 10px gold;
+    }
+    .selected {
+      box-shadow: 0 0 10px #f9c2d9, 0 0 14px rgba(249, 194, 217, 0.6);
+    }
+
+    /* модальное окно */
+    #effect-modal {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .effect-content {
+      max-width: 320px;
+      width: 100%;
+      padding: 16px 14px;
+      border-radius: 12px;
+      background: #fefdf5;
+      box-shadow: 0 6px 16px rgba(180, 120, 180, 0.45);
+      color: #663355;
+      font-size: 14px;
+    }
+
+    .effect-content p {
+      line-height: 1.5;
+      margin: 0 0 12px 0;
+    }
+
+    .effect-content button {
+      width: 100%;
+      padding: 10px 0;
+      font-size: 14px;
+      background: #f9c2d9;
+      border: 2px solid #d4a1b8;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #553344;
+    }
+  </style>
+</head>
+<body>
+  <h1>Шашки: Альфа и Омега</h1>
+
+  <!-- ВЫБОР РОЛИ -->
+  <div id="role-select">
+    <p>Выберите свою роль:</p>
+    <button class="role-btn" id="select-alpha">Альфа</button>
+    <button class="role-btn" id="select-omega">Омега</button>
+  </div>
+
+  <!-- СТАТУС ОЖИДАНИЯ -->
+  <div id="status">
+    Ожидаю второго игрока...
+  </div>
+
+  <!-- ИГРА -->
+  <div id="game-container">
+    <p id="turn-info">Очередь: <span id="turn-player">Альфа</span></p>
+    <div id="board"></div>
+  </div>
+
+  <!-- Модальное окно действия -->
+  <div id="effect-modal">
+    <div class="effect-content">
+      <p id="effect-text"></p>
+      <button id="effect-ok">Продолжить</button>
+    </div>
+  </div>
+  <!-- ЭКРАН КОНЦА -->
+  <div id="end-screen" style="
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    padding: 16px;
+  ">
+    <div style="
+      background: #fefdf5;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 320px;
+      width: 100%;
+      color: #663355;
+    ">
+      <h2 id="end-text" style="margin-bottom: 12px;"></h2>
+      <button id="restart-btn" style="
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: 2px solid #d4a1b8;
+        background: #f9c2d9;
+        cursor: pointer;
+      ">
+        Новая игра
+      </button>
+    </div>
+  </div>
+  <script>
+const roleSelect   = document.getElementById("role-select");
+const status       = document.getElementById("status");
+const gameContainer= document.getElementById("game-container");
+const board        = document.getElementById("board");
+const turnPlayer   = document.getElementById("turn-player");
+const modal        = document.getElementById("effect-modal");
+const effectText   = document.getElementById("effect-text");
+const effectOk     = document.getElementById("effect-ok");
+const endScreen = document.getElementById("end-screen");
+const endText = document.getElementById("end-text");
+const restartBtn = document.getElementById("restart-btn");
+
+const effects = {
+  "подчинить": "Ты мягко подчинил его запахом, как истинный вожак подчиняет омегу. Взгляд стал покорным, тело — податливым.",
+  "запах в голове": "Ты втянул его в свой запах так, что в голове остался только ты. Мысли рассыпались, остался только твой ореол.",
+  "потянуть за хвост": "Ты потянул его за хвост и медленно, по-кошачьи, втянул в своё поле. Он не оттолкнул, а только дрожал от прикосновения.",
+  "втянуть в тень": "Ты втянул его в тень, как в свой личный запретный сад. Свет исчез, остались только вы и ваше тяжёлое дыхание.",
+  "захватить вздох": "Ты захватил его вздох, когда он пытался отвернуться. Вдох остался внутри, а выдох — у тебя на шее.",
+  "прижать к стене": "Ты прижал его к стене так, что не осталось места для отступления. В его глазах больше нет спора, только ожидание твоих действий.",
+  "запутать в шерсти": "Ты запутал его в своей шерсти, как в сети, и не дал вырваться. Он тяжело дышит, но не просит остановиться.",
+  "обнять в тени": "Ты обнял его в тени, когда никто не видел. Тело прильнуло к тебе, как будто искало это ещё до того, как ты решил.",
+  "запах в шее": "Ты припал к его шее, и запах омеги вдруг стал твоим законом. Он не оттолкнул, лишь тихо застонал.",
+  "узел в бедрах": "Ты закрепил его узлом так, что он не мог отстраниться. Его тело подалось твоим движениям, как будто давно ждало этого.",
+  "тянуть за бёдра": "Ты прижал его к себе за бёдра, и он не ушёл, а только тяжелее дышал. Ты чувствуешь, как он тает в твоих ладонях.",
+  "соблазн шепотом": "Ты шепнул ему в ухо ту самую фразу, от которой его омега-частичка всколыхнулась. Он не отстранился, а только облизнул губы.",
+  "запах в волосах": "Ты зарылся в его волосы и сделал их своим личным ореолом. Он замер, но не стал отталкивать твои пальцы.",
+  "тень в тени": "Ты посадил его на свои колени и накрыл, как своим тёмным полушарием. Он не сопротивлялся, только тяжело дышал, слыша твоё сердце.",
+  "захватить за шею": "Ты обхватил его шею так, что он не мог отвернуться. Его зрачки расширились, но он не попросил отпустить.",
+  "запутать в бёдрах": "Ты вплёл его в свои бёдра так, что каждый твой рывок отзывался в нём. Он не мог отстраниться, даже если бы захотел.",
+  "потеря сознания": "Альфа выебал омегу до потери сознания, пока тот дрожал в его руках, не в силах выдержать натиск вожака.",
+  "заполнить до краев": "Альфа заполнил омегу до краёв, пока тот всхлипывал, чувствуя, как каждый его толчок стирает границы между ними.",
+  "омега ошейник": "Омега надел ошейник и заткнулся, полностью подчинившись воле альфы. Взгляд стал тупым, но покорным."
+};
+
+const effect_keys = Object.keys(effects);
+const size = 8;
+
+let state = null;
+let myRole = null;
+let selectedPiece = null;
+
+const GAME_ID = new URLSearchParams(location.search).get("game") || "default";
+const URL_ROLE = new URLSearchParams(location.search).get("view");
+
+// ===== INIT PIECES =====
+function createInitialPieces() {
+  const pieces = [];
+
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 8; col++) {
+      if ((row + col) % 2 !== 0) {
+        pieces.push({ row, col, owner: "alpha", effect: randEffect(), king: false });
+      }
+    }
+  }
+
+  for (let row = 5; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if ((row + col) % 2 !== 0) {
+        pieces.push({ row, col, owner: "omega", effect: randEffect(), king: false });
+      }
+    }
+  }
+
+  return pieces;
+}
+
+function randEffect() {
+  return effect_keys[Math.floor(Math.random() * effect_keys.length)];
+}
+
+function checkWin() {
+  const alpha = state.pieces.filter(p => p.owner === "alpha").length;
+  const omega = state.pieces.filter(p => p.owner === "omega").length;
+
+  if (alpha === 0) return "Омега победил 💜";
+  if (omega === 0) return "Альфа победил 💗";
+
+  return null;
+}
+
+// ===== API =====
+async function loadState() {
+  const res = await fetch(`/game/${GAME_ID}`);
+
+  if (!res.ok) {
+    const fresh = {
+      roleA: null,
+      roleO: null,
+      turn: "alpha",
+      pieces: createInitialPieces()
+    };
+    await saveState(fresh);
+    return fresh;
+  }
+
+  const data = await res.json();
+
+  if (!data.pieces || data.pieces.length === 0) {
+    data.pieces = createInitialPieces();
+    await saveState(data);
+  }
+
+  return data;
+}
+
+async function saveState(s) {
+  await fetch(`/game/${GAME_ID}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(s)
+  });
+}
+
+// ===== UI =====
+function updateStatus() {
+  if (!state.roleA || !state.roleO) {
+    gameContainer.style.display = "none";
+
+    if (!myRole) {
+      status.textContent = "Выберите роль";
+    } else {
+      status.textContent = "Ожидаю второго игрока...";
+    }
+
+    return;
+  }
+
+  gameContainer.style.display = "block";
+
+  turnPlayer.textContent = state.turn === "alpha" ? "Альфа" : "Омега";
+
+  status.textContent =
+    "Игра начата! Очередь: " +
+    (state.turn === "alpha" ? "Альфа" : "Омега") +
+    (state.turn === myRole ? " (Ваш ход)" : " (ход соперника)");
+}
+
+// ===== BOARD =====
+function renderBoard() {
+  board.innerHTML = "";
+
+  const map = new Map();
+  state.pieces.forEach(p => map.set(`${p.row},${p.col}`, p));
+
+  const rows = [...Array(8).keys()];
+  const cols = [...Array(8).keys()];
+
+  // 💡 переворот для альфы
+  if (myRole === "alpha") {
+    rows.reverse();
+    cols.reverse();
+  }
+
+  for (let row of rows) {
+    for (let col of cols) {
+      const cell = document.createElement("div");
+      cell.className = "cell " + ((row + col) % 2 ? "dark" : "light");
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+
+      const p = map.get(`${row},${col}`);
+      if (p) {
+        const piece = document.createElement("div");
+        piece.className =
+          "piece " +
+          (p.owner === "alpha" ? "alpha-piece" : "omega-piece") +
+          (p.king ? " king" : "");
+        piece.dataset.row = row;
+        piece.dataset.col = col;
+        piece.dataset.owner = p.owner;
+        piece.dataset.effect = p.effect;
+
+        piece.onclick = onPieceClick;
+        cell.appendChild(piece);
+      }
+
+      cell.onclick = onCellClick;
+      board.appendChild(cell);
+    }
+  }
+}
+
+// ===== GAME =====
+function onPieceClick(e) {
+  e.stopPropagation(); // фикс двойного клика
+
+  if (effectOpen) return;
+
+  const piece = e.target;
+
+  if (piece.dataset.owner !== myRole) return;
+  if (state.turn !== myRole) return;
+
+  document.querySelectorAll(".piece").forEach(p => p.classList.remove("selected"));
+
+  selectedPiece = piece;
+  piece.classList.add("selected");
+}
+
+function onCellClick(e) {
+  if (state.winner) return;
+  if (!selectedPiece) return;
+  if (state.turn !== myRole) return;
+  if (effectOpen) return;
+
+  const cell = e.currentTarget;
+
+  const r = +cell.dataset.row;
+  const c = +cell.dataset.col;
+
+  const pr = +selectedPiece.dataset.row;
+  const pc = +selectedPiece.dataset.col;
+
+  const piece = getPiece(pr, pc);
+  if (!piece) return;
+
+  const dr = r - pr;
+  const dc = c - pc;
+
+  // ===== 👑 ДАМКА =====
+  if (piece.king) {
+    if (Math.abs(dr) !== Math.abs(dc)) return; // только диагональ
+
+    const stepR = dr > 0 ? 1 : -1;
+    const stepC = dc > 0 ? 1 : -1;
+
+    let curR = pr + stepR;
+    let curC = pc + stepC;
+
+    let enemy = null;
+
+    while (curR !== r && curC !== c) {
+      const p = getPiece(curR, curC);
+
+      if (p) {
+        if (p.owner === myRole) return; // своя фигура мешает
+
+        if (enemy) return; // уже была одна — нельзя перепрыгнуть 2
+
+        enemy = p;
+      }
+
+      curR += stepR;
+      curC += stepC;
+    }
+
+    // если клетка занята — нельзя
+    if (getPiece(r, c)) return;
+
+    // если была рубка
+    if (enemy) {
+      showEffect(enemy.effect);
+
+      state.pieces = state.pieces.filter(
+        p => !(p.row === enemy.row && p.col === enemy.col)
+      );
+    }
+
+    move(pr, pc, r, c);
+    return;
+  }
+
+  // ===== ОБЫЧНАЯ ШАШКА =====
+  const dir = myRole === "alpha" ? 1 : -1;
+
+  // обычный ход
+  if (
+    Math.abs(dr) === 1 &&
+    Math.abs(dc) === 1 &&
+    dr === dir &&
+    !getPiece(r, c)
+  ) {
+    move(pr, pc, r, c);
+    return;
+  }
+
+  // рубка
+  if (
+    Math.abs(dr) === 2 &&
+    Math.abs(dc) === 2 &&
+    dr === dir * 2
+  ) {
+    const mr = (r + pr) / 2;
+    const mc = (c + pc) / 2;
+
+    const enemy = getPiece(mr, mc);
+
+    if (enemy && enemy.owner !== myRole && !getPiece(r, c)) {
+      showEffect(enemy.effect);
+
+      state.pieces = state.pieces.filter(
+        p => !(p.row == mr && p.col == mc)
+      );
+
+      move(pr, pc, r, c);
+    }
+  }
+}
+
+function getPiece(r,c){
+  return state.pieces.find(p=>p.row==r && p.col==c);
+}
+
+function move(pr, pc, r, c) {
+  const p = getPiece(pr, pc);
+
+  if (!p) return;
+
+  // перемещение
+  p.row = r;
+  p.col = c;
+
+  // 👑 превращение в дамку
+  if (p.owner === "alpha" && p.row === 7) p.king = true;
+  if (p.owner === "omega" && p.row === 0) p.king = true;
+
+  // 🏁 проверка победы
+  const win = checkWin();
+  if (win) {
+    state.winner = win;
+    showEndScreen(win);
+    saveState(state);
+    return;
+  }
+
+  // смена хода
+  state.turn = state.turn === "alpha" ? "omega" : "alpha";
+
+  // сброс выбора
+  selectedPiece = null;
+
+  // убираем подсветку
+  document.querySelectorAll(".piece").forEach(el => el.classList.remove("selected"));
+
+  // мгновенное обновление (ВАЖНО)
+  renderBoard();
+  updateStatus();
+
+  // сохранение
+  saveState(state);
+}
+
+// ===== EFFECT =====
+let effectOpen = false;
+
+function showEffect(name) {
+  effectOpen = true;
+  effectText.textContent = effects[name];
+  modal.style.display = "flex";
+}
+
+function showEndScreen(text) {
+  endText.textContent = text;
+  endScreen.style.display = "flex";
+}
+
+effectOk.onclick = () => {
+  modal.style.display = "none";
+  effectOpen = false;
+};
+
+// ===== ROLE =====
+document.getElementById("select-alpha").onclick = () => setRole("alpha");
+document.getElementById("select-omega").onclick = () => setRole("omega");
+
+async function setRole(role) {
+  if (myRole) return;
+
+  myRole = role;
+  state = await loadState();
+
+  if (role==="alpha" && !state.roleA) state.roleA="alpha";
+  if (role==="omega" && !state.roleO) state.roleO="omega";
+
+  await saveState(state);
+
+  roleSelect.style.display = "none";
+}
+
+// ===== LOOP =====
+async function loop(){
+  state = await loadState();
+  updateStatus();
+
+  if (state.roleA && state.roleO){
+    renderBoard();
+  }
+
+  setTimeout(loop, 1200);
+}
+
+// ===== START =====
+(async () => {
+  if (URL_ROLE) myRole = URL_ROLE;
+
+  state = await loadState();
+
+  if (myRole) {
+    if (myRole==="alpha" && !state.roleA) state.roleA="alpha";
+    if (myRole==="omega" && !state.roleO) state.roleO="omega";
+    await saveState(state);
+    roleSelect.style.display="none";
+  }
+
+  loop();
+})();
+
+restartBtn.onclick = async () => {
+  const fresh = {
+    roleA: state.roleA,
+    roleO: state.roleO,
+    turn: "alpha",
+    pieces: createInitialPieces(),
+    winner: null
+  };
+
+  state = fresh;
+  endScreen.style.display = "none";
+  renderBoard();
+  updateStatus();
+
+  await saveState(fresh);
+};
+
+</script>
